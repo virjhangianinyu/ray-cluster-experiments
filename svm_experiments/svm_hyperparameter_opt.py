@@ -10,6 +10,7 @@ from ray.tune.tuner import Tuner
 from ray.air import RunConfig
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search.bayesopt import BayesOptSearch
+import pandas as pd
 
 # Initialize Ray (connect to the cluster)
 ray.init(address="auto")
@@ -29,7 +30,8 @@ def svm_train(config):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_val)
     accuracy = accuracy_score(y_val, y_pred)
-    session.report({"accuracy": accuracy})  # Report accuracy
+    session.report({"accuracy": accuracy})
+    
 
 storage_dir = "file:///home/cc/ray-cluster-experiments/ray_results"
 
@@ -49,6 +51,7 @@ def grid_search_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Grid Search Best Hyperparameters:", best_result.config)
+    best_result.config["accuracy"] = best_result.metrics["accuracy"]
     return(best_result.config)
 
 # Random Search Tuning
@@ -67,6 +70,8 @@ def random_search_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Random Search Best Hyperparameters:", best_result.config)
+    best_result.config["accuracy"] = best_result.metrics["accuracy"]
+
     return(best_result.config)
 
 # Bayesian Optimization Tuning
@@ -85,6 +90,7 @@ def bayesian_optimization_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Bayesian Optimization Best Hyperparameters:", best_result.config)
+    best_result.config["accuracy"] = best_result.metrics["accuracy"]
     return(best_result.config)
 
 # Successive Halving Tuning (using ASHA Scheduler)
@@ -104,24 +110,29 @@ def successive_halving_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Successive Halving Best Hyperparameters:", best_result.config)
+    best_result.config["accuracy"] = best_result.metrics["accuracy"]
     return(best_result.config)
 
 # Run All Tuning Methods
 if __name__ == "__main__":
     results = []
     print("Running Grid Search...")
-    results.append(grid_search_tuning())
+    grid_result = grid_search_tuning()
+    results.append({"Method": "Grid Search", **grid_result})
     
     print("\nRunning Random Search...")
-    results.append(random_search_tuning())
+    random_result = random_search_tuning()
+    results.append({"Method": "Random Search", **random_result})
     
     print("\nRunning Bayesian Optimization...")
-    results.append(bayesian_optimization_tuning())
+    bayes_result = bayesian_optimization_tuning()
+    results.append({"Method": "Bayesian Optimization", **bayes_result})
     
     print("\nRunning Successive Halving...")
-    results.append(successive_halving_tuning())
+    asha_result = successive_halving_tuning()
+    results.append({"Method": "Successive Halving", **asha_result})
 
-    print("\nResults for all experiments:")
-
-    for result in results:
-        print(result)
+    # Display Results in a DataFrame
+    results_df = pd.DataFrame(results)
+    print("\nSummary of Results:")
+    print(results_df)
