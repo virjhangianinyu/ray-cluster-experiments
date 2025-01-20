@@ -31,7 +31,7 @@ def svm_train(config):
     accuracy = accuracy_score(y_val, y_pred)
     session.report({"accuracy": accuracy})  # Report accuracy
 
-storage_dir = "file:///home/cc/ray-cluster/reserve_kvm/.ray_results"
+storage_dir = "file:///home/cc/ray-cluster-experiments/ray_results"
 
 # Grid Search Tuning
 def grid_search_tuning():
@@ -49,6 +49,7 @@ def grid_search_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Grid Search Best Hyperparameters:", best_result.config)
+    return(best_result.config)
 
 # Random Search Tuning
 def random_search_tuning():
@@ -66,6 +67,7 @@ def random_search_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Random Search Best Hyperparameters:", best_result.config)
+    return(best_result.config)
 
 # Bayesian Optimization Tuning
 def bayesian_optimization_tuning():
@@ -83,6 +85,7 @@ def bayesian_optimization_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Bayesian Optimization Best Hyperparameters:", best_result.config)
+    return(best_result.config)
 
 # Successive Halving Tuning (using ASHA Scheduler)
 def successive_halving_tuning():
@@ -101,17 +104,24 @@ def successive_halving_tuning():
     results = tuner.fit()
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Successive Halving Best Hyperparameters:", best_result.config)
+    return(best_result.config)
 
 # Run All Tuning Methods
 if __name__ == "__main__":
+    results = []
     print("Running Grid Search...")
-    grid_search_tuning()
+    results.append(grid_search_tuning())
     
     print("\nRunning Random Search...")
-    random_search_tuning()
+    results.append(random_search_tuning())
     
     print("\nRunning Bayesian Optimization...")
-    bayesian_optimization_tuning()
+    results.append(bayesian_optimization_tuning())
     
     print("\nRunning Successive Halving...")
-    successive_halving_tuning()
+    results.append(successive_halving_tuning())
+
+    print("\nResults for all experiments:")
+
+    for result in results:
+        print(result)
