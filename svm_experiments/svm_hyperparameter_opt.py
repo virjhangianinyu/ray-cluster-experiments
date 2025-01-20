@@ -8,7 +8,6 @@ from ray.air import session
 from ray import tune
 from ray.tune.tuner import Tuner
 from ray.air import RunConfig
-from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search.bayesopt import BayesOptSearch
 import pandas as pd
 
@@ -93,26 +92,6 @@ def bayesian_optimization_tuning():
     best_result.config["accuracy"] = best_result.metrics["accuracy"]
     return(best_result.config)
 
-# Successive Halving Tuning (using ASHA Scheduler)
-def successive_halving_tuning():
-    asha_scheduler = ASHAScheduler(metric="accuracy", mode="max", grace_period=1, reduction_factor=2)
-    asha_search_config = {
-        "kernel": tune.choice(["linear", "rbf"]),
-        "C": tune.loguniform(0.1, 10),
-        "gamma": tune.loguniform(0.01, 1)  # Only for rbf kernel
-    }
-    tuner = Tuner(
-        svm_train,
-        param_space=asha_search_config,
-        tune_config=tune.TuneConfig(scheduler=asha_scheduler, num_samples=50),
-        run_config=RunConfig(name="asha_digits", storage_path=storage_dir)
-    )
-    results = tuner.fit()
-    best_result = results.get_best_result(metric="accuracy", mode="max")
-    print("Successive Halving Best Hyperparameters:", best_result.config)
-    best_result.config["accuracy"] = best_result.metrics["accuracy"]
-    return(best_result.config)
-
 # Run All Tuning Methods
 if __name__ == "__main__":
     results = []
@@ -128,9 +107,6 @@ if __name__ == "__main__":
     bayes_result = bayesian_optimization_tuning()
     results.append({"Method": "Bayesian Optimization", **bayes_result})
     
-    print("\nRunning Successive Halving...")
-    asha_result = successive_halving_tuning()
-    results.append({"Method": "Successive Halving", **asha_result})
 
     # Display Results in a DataFrame
     results_df = pd.DataFrame(results)
