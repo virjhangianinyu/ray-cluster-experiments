@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 import ray
 from sklearn.datasets import load_digits
 from sklearn.model_selection import train_test_split
@@ -10,6 +13,7 @@ from ray.tune.tuner import Tuner
 from ray.air import RunConfig
 from ray.tune.search.bayesopt import BayesOptSearch
 import pandas as pd
+from sklearn.decomposition import PCA
 
 # Initialize Ray (connect to the cluster)
 ray.init(address="auto")
@@ -30,6 +34,25 @@ def svm_train(config):
     y_pred = model.predict(X_val)
     accuracy = accuracy_score(y_val, y_pred)
     session.report({"accuracy": accuracy})
+
+# Hyperparameter Heatmap Plot
+def plot_hyperparameter_heatmap(results_df, method):
+    # Filter out rows where the kernel is "linear"
+    filtered_results = results_df[results_df["kernel"] != "linear"]
+    
+    # Check if filtered results are not empty
+    if filtered_results.empty:
+        print("No results available for kernels that use gamma.")
+        return
+    
+    # Pivot for the heatmap
+    pivot_data = filtered_results.pivot("C", "gamma", "accuracy")
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(pivot_data, annot=True, fmt=".3f", cmap="YlGnBu")
+    plt.title(f"Hyperparameter Heatmap ({method} - Non-linear Kernels)")
+    plt.xlabel("Gamma")
+    plt.ylabel("C")
+    plt.show()
     
 
 storage_dir = "file:///home/cc/ray-cluster-experiments/ray_results"
@@ -51,7 +74,7 @@ def grid_search_tuning():
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Grid Search Best Hyperparameters:", best_result.config)
     best_result.config["accuracy"] = best_result.metrics["accuracy"]
-    return(best_result.config)
+    return best_result.config, results.get_dataframe()
 
 # Random Search Tuning
 def random_search_tuning():
@@ -71,7 +94,7 @@ def random_search_tuning():
     print("Random Search Best Hyperparameters:", best_result.config)
     best_result.config["accuracy"] = best_result.metrics["accuracy"]
 
-    return(best_result.config)
+    return best_result.config, results.get_dataframe()
 
 # Bayesian Optimization Tuning
 def bayesian_optimization_tuning():
@@ -90,21 +113,21 @@ def bayesian_optimization_tuning():
     best_result = results.get_best_result(metric="accuracy", mode="max")
     print("Bayesian Optimization Best Hyperparameters:", best_result.config)
     best_result.config["accuracy"] = best_result.metrics["accuracy"]
-    return(best_result.config)
+    return best_result.config, results.get_dataframe()
 
 # Run All Tuning Methods
 if __name__ == "__main__":
     results = []
     print("Running Grid Search...")
-    grid_result = grid_search_tuning()
+    grid_result, grid_results_df  = grid_search_tuning()
     results.append({"Method": "Grid Search", **grid_result})
     
     print("\nRunning Random Search...")
-    random_result = random_search_tuning()
+    random_result, random_results_df = random_search_tuning()
     results.append({"Method": "Random Search", **random_result})
     
     print("\nRunning Bayesian Optimization...")
-    bayes_result = bayesian_optimization_tuning()
+    bayes_result, bayes_results_df = bayesian_optimization_tuning()
     results.append({"Method": "Bayesian Optimization", **bayes_result})
     
 
@@ -112,3 +135,8 @@ if __name__ == "__main__":
     results_df = pd.DataFrame(results)
     print("\nSummary of Results:")
     print(results_df)
+
+    # Heatmaps
+    plot_hyperparameter_heatmap(grid_results_df, "Grid Search")
+    plot_hyperparameter_heatmap(random_results_df, "Random Search")
+    plot_hyperparameter_heatmap(bayes_results_df, "Bayesian Optimization")
